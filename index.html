@@ -45,6 +45,17 @@
       line-height: 1.6;
     }
 
+    .platform-status {
+      margin: 0 0 16px;
+      font-size: 14px;
+      color: #6b7280;
+    }
+
+    .install-actions {
+      display: grid;
+      gap: 12px;
+    }
+
     a.install {
       display: inline-flex;
       align-items: center;
@@ -57,6 +68,21 @@
       font-size: 17px;
       font-weight: 600;
       text-decoration: none;
+    }
+
+    a.install.android {
+      background: #15803d;
+    }
+
+    a.install.secondary {
+      background: transparent;
+      color: #0a7cff;
+      border: 1px solid #93c5fd;
+    }
+
+    a.install.android.secondary {
+      color: #15803d;
+      border-color: #86efac;
     }
 
     .hint {
@@ -94,8 +120,19 @@
       }
 
       p,
+      .platform-status,
       .hint {
         color: #cbd5e1;
+      }
+
+      a.install.secondary {
+        color: #93c5fd;
+        border-color: #1d4ed8;
+      }
+
+      a.install.android.secondary {
+        color: #86efac;
+        border-color: #166534;
       }
 
       .debug-panel {
@@ -110,16 +147,25 @@
   <main>
     <img id="appIcon" src="./assets/icon.png" alt="AI 差旅">
     <h1>AI 差旅</h1>
-    <p>请使用 iPhone 的 Safari 打开此页面，然后点击安装。</p>
-    <a
-      id="installButton"
-      class="install"
-      href="itms-services://?action=download-manifest&amp;url=https://egeorgm.github.io/ios-ota-install/manifest.plist"
-      data-manifest-url="https://egeorgm.github.io/ios-ota-install/manifest.plist"
-      data-ipa-url="https://egeorgm.github.io/ios-ota-install/downloads/App.ipa"
-      data-icon-url="https://egeorgm.github.io/ios-ota-install/assets/icon.png"
-    >安装 App</a>
-    <div class="hint">如果提示无法安装，请确认设备已被当前签名方式允许安装。</div>
+    <p>请使用手机浏览器打开此页面，然后选择对应平台安装。</p>
+    <div id="platformStatus" class="platform-status">正在检测设备平台...</div>
+    <div class="install-actions">
+      <a
+        id="iosInstallButton"
+        class="install"
+        href="itms-services://?action=download-manifest&amp;url=https://egeorgm.github.io/ios-ota-install/manifest.plist"
+        data-manifest-url="https://egeorgm.github.io/ios-ota-install/manifest.plist"
+        data-ipa-url="https://egeorgm.github.io/ios-ota-install/downloads/App.ipa"
+        data-icon-url="https://egeorgm.github.io/ios-ota-install/assets/icon.png"
+      >iOS 安装</a>
+      <a
+        id="androidInstallButton"
+        class="install android"
+        href="https://egeorgm.github.io/ios-ota-install/downloads/app-debug.apk"
+        data-apk-url="https://egeorgm.github.io/ios-ota-install/downloads/app-debug.apk"
+      >Android 下载</a>
+    </div>
+    <div class="hint">iOS 请使用 Safari；Android 下载 APK 后按系统提示安装。</div>
     <div id="debugPanel" class="debug-panel" aria-live="polite"></div>
   </main>
   <script>
@@ -127,18 +173,21 @@
       "use strict";
 
       var logPrefix = "[ios-ota-install]";
-      var installButton = document.getElementById("installButton");
+      var iosInstallButton = document.getElementById("iosInstallButton");
+      var androidInstallButton = document.getElementById("androidInstallButton");
       var appIcon = document.getElementById("appIcon");
       var debugPanel = document.getElementById("debugPanel");
-      var manifestUrl = installButton.dataset.manifestUrl;
-      var ipaUrl = installButton.dataset.ipaUrl;
-      var iconUrl = installButton.dataset.iconUrl;
-      var fallbackInstallUrl = installButton.href;
+      var platformStatus = document.getElementById("platformStatus");
+      var manifestUrl = iosInstallButton.dataset.manifestUrl;
+      var ipaUrl = iosInstallButton.dataset.ipaUrl;
+      var iconUrl = iosInstallButton.dataset.iconUrl;
+      var apkUrl = androidInstallButton.dataset.apkUrl;
+      var fallbackInstallUrl = iosInstallButton.href;
       var installUrl = "itms-services://?action=download-manifest&url=" + encodeURIComponent(manifestUrl);
       var startedAt = Date.now();
       var panelLineLimit = 80;
 
-      installButton.href = installUrl;
+      iosInstallButton.href = installUrl;
 
       function elapsed() {
         return "+" + (Date.now() - startedAt) + "ms";
@@ -210,6 +259,7 @@
         var platform = navigator.platform || "";
         var touchPoints = navigator.maxTouchPoints || 0;
         var isIOS = /iPad|iPhone|iPod/.test(ua) || (platform === "MacIntel" && touchPoints > 1);
+        var isAndroid = /Android/i.test(ua);
         var isSafari = /^((?!chrome|android|crios|fxios|edgios).)*safari/i.test(ua);
 
         return {
@@ -225,9 +275,35 @@
           cookieEnabled: navigator.cookieEnabled,
           online: navigator.onLine,
           isIOS: isIOS,
+          isAndroid: isAndroid,
           isSafari: isSafari,
           visibilityState: document.visibilityState
         };
+      }
+
+      function applyPlatformState(environment) {
+        if (environment.isIOS) {
+          platformStatus.textContent = environment.isSafari
+            ? "已识别为 iOS 设备"
+            : "已识别为 iOS 设备，请使用 Safari 安装";
+          iosInstallButton.classList.remove("secondary");
+          androidInstallButton.classList.add("secondary");
+          log("platform selected", "ios");
+          return;
+        }
+
+        if (environment.isAndroid) {
+          platformStatus.textContent = "已识别为 Android 设备";
+          androidInstallButton.classList.remove("secondary");
+          iosInstallButton.classList.add("secondary");
+          log("platform selected", "android");
+          return;
+        }
+
+        platformStatus.textContent = "未识别为手机设备，可选择对应平台测试下载";
+        iosInstallButton.classList.remove("secondary");
+        androidInstallButton.classList.remove("secondary");
+        log("platform selected", "unknown");
       }
 
       function logParsedManifest(xmlText) {
@@ -298,6 +374,7 @@
           .catch(function () {});
 
         probeFetch(ipaUrl, { method: "HEAD" }).catch(function () {});
+        probeFetch(apkUrl, { method: "HEAD" }).catch(function () {});
         probeFetch(iconUrl, { method: "HEAD" }).catch(function () {});
       }
 
@@ -347,15 +424,22 @@
         error("icon image failed", appIcon.currentSrc || appIcon.src);
       });
 
-      installButton.addEventListener("touchstart", function (event) {
-        log("install touchstart", {
+      iosInstallButton.addEventListener("touchstart", function (event) {
+        log("ios install touchstart", {
           touches: event.touches ? event.touches.length : 0,
           targetId: event.target && event.target.id
         });
       }, { passive: true });
 
-      installButton.addEventListener("click", function (event) {
-        log("install click received", {
+      androidInstallButton.addEventListener("touchstart", function (event) {
+        log("android download touchstart", {
+          touches: event.touches ? event.touches.length : 0,
+          targetId: event.target && event.target.id
+        });
+      }, { passive: true });
+
+      iosInstallButton.addEventListener("click", function (event) {
+        log("ios install click received", {
           isTrusted: event.isTrusted,
           button: event.button,
           metaKey: event.metaKey,
@@ -384,8 +468,38 @@
         }, 1500);
       });
 
-      log("page script initialized", getEnvironment());
-      log("install button resolved href", installUrl);
+      androidInstallButton.addEventListener("click", function (event) {
+        log("android download click received", {
+          isTrusted: event.isTrusted,
+          button: event.button,
+          metaKey: event.metaKey,
+          ctrlKey: event.ctrlKey,
+          shiftKey: event.shiftKey,
+          altKey: event.altKey,
+          defaultPreventedBefore: event.defaultPrevented
+        });
+
+        event.preventDefault();
+
+        log("apk url", apkUrl);
+        log("navigating to APK download now");
+
+        window.location.href = apkUrl;
+
+        setTimeout(function () {
+          warn("still on page 1500ms after APK download navigation attempt", {
+            href: location.href,
+            visibilityState: document.visibilityState
+          });
+        }, 1500);
+      });
+
+      var environment = getEnvironment();
+
+      log("page script initialized", environment);
+      log("ios install button resolved href", installUrl);
+      log("android install button resolved href", apkUrl);
+      applyPlatformState(environment);
       probeResources();
     })();
   </script>

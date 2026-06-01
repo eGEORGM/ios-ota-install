@@ -4,5 +4,6 @@
   "bundleIdentifier": "com.ekuaibao.aitrip.chat.dev.egeorg",
   "bundleVersion": "1",
   "ipaPath": "downloads/App.ipa",
+  "apkPath": "downloads/app-debug.apk",
   "iconPath": "assets/icon.png"
 }

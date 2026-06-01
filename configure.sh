@@ -15,12 +15,17 @@ import sys
 
 root = Path(sys.argv[1])
 base_url = sys.argv[2]
-old = "https://example.com/ios-ota-install"
+known_base_urls = {
+    "https://example.com/ios-ota-install",
+    "https://egeorgm.github.io/ios-ota-install",
+}
 
 for name in ("index.html", "manifest.plist", "config.example.json"):
     path = root / name
     text = path.read_text()
-    path.write_text(text.replace(old, base_url))
+    for known_base_url in known_base_urls:
+        text = text.replace(known_base_url, base_url)
+    path.write_text(text)
 
 print(f"Configured OTA base URL: {base_url}")
 PY
