@@ -1,0 +1,90 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>安装 AI 差旅</title>
+  <style>
+    :root {
+      color-scheme: light dark;
+      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+      background: #f6f7f9;
+      color: #111827;
+    }
+
+    body {
+      margin: 0;
+      min-height: 100vh;
+      display: grid;
+      place-items: center;
+      padding: 24px;
+    }
+
+    main {
+      width: min(100%, 420px);
+      text-align: center;
+    }
+
+    img {
+      width: 88px;
+      height: 88px;
+      border-radius: 20px;
+      box-shadow: 0 10px 30px rgb(15 23 42 / 18%);
+    }
+
+    h1 {
+      margin: 20px 0 8px;
+      font-size: 28px;
+      line-height: 1.2;
+      letter-spacing: 0;
+    }
+
+    p {
+      margin: 0 0 24px;
+      color: #4b5563;
+      line-height: 1.6;
+    }
+
+    a.install {
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      min-height: 48px;
+      padding: 0 28px;
+      border-radius: 8px;
+      background: #0a7cff;
+      color: white;
+      font-size: 17px;
+      font-weight: 600;
+      text-decoration: none;
+    }
+
+    .hint {
+      margin-top: 20px;
+      font-size: 14px;
+      color: #6b7280;
+    }
+
+    @media (prefers-color-scheme: dark) {
+      :root {
+        background: #111827;
+        color: #f9fafb;
+      }
+
+      p,
+      .hint {
+        color: #cbd5e1;
+      }
+    }
+  </style>
+</head>
+<body>
+  <main>
+    <img src="./assets/icon.png" alt="AI 差旅">
+    <h1>AI 差旅</h1>
+    <p>请使用 iPhone 的 Safari 打开此页面，然后点击安装。</p>
+    <a class="install" href="itms-services://?action=download-manifest&amp;url=https://egeorgm.github.io/ios-ota-install/manifest.plist">安装 App</a>
+    <div class="hint">如果提示无法安装，请确认设备已被当前签名方式允许安装。</div>
+  </main>
+</body>
+</html>

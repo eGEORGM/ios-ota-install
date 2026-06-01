@@ -1,0 +1,8 @@
+{
+  "baseUrl": "https://egeorgm.github.io/ios-ota-install",
+  "appName": "AI 差旅",
+  "bundleIdentifier": "com.ekuaibao.aitrip.chat.dev.egeorg",
+  "bundleVersion": "1",
+  "ipaPath": "downloads/App.ipa",
+  "iconPath": "assets/icon.png"
+}
