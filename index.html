@@ -80,11 +80,245 @@
 </head>
 <body>
   <main>
-    <img src="./assets/icon.png" alt="AI 差旅">
+    <img id="appIcon" src="./assets/icon.png" alt="AI 差旅">
     <h1>AI 差旅</h1>
     <p>请使用 iPhone 的 Safari 打开此页面，然后点击安装。</p>
-    <a class="install" href="itms-services://?action=download-manifest&amp;url=https://egeorgm.github.io/ios-ota-install/manifest.plist">安装 App</a>
+    <a
+      id="installButton"
+      class="install"
+      href="itms-services://?action=download-manifest&amp;url=https://egeorgm.github.io/ios-ota-install/manifest.plist"
+      data-manifest-url="https://egeorgm.github.io/ios-ota-install/manifest.plist"
+      data-ipa-url="https://egeorgm.github.io/ios-ota-install/downloads/App.ipa"
+      data-icon-url="https://egeorgm.github.io/ios-ota-install/assets/icon.png"
+    >安装 App</a>
     <div class="hint">如果提示无法安装，请确认设备已被当前签名方式允许安装。</div>
   </main>
+  <script>
+    (function () {
+      "use strict";
+
+      var logPrefix = "[ios-ota-install]";
+      var installButton = document.getElementById("installButton");
+      var appIcon = document.getElementById("appIcon");
+      var manifestUrl = installButton.dataset.manifestUrl;
+      var ipaUrl = installButton.dataset.ipaUrl;
+      var iconUrl = installButton.dataset.iconUrl;
+      var installUrl = installButton.href;
+      var startedAt = Date.now();
+
+      function elapsed() {
+        return "+" + (Date.now() - startedAt) + "ms";
+      }
+
+      function log(message, detail) {
+        if (typeof detail === "undefined") {
+          console.log(logPrefix, elapsed(), message);
+          return;
+        }
+
+        console.log(logPrefix, elapsed(), message, detail);
+      }
+
+      function warn(message, detail) {
+        if (typeof detail === "undefined") {
+          console.warn(logPrefix, elapsed(), message);
+          return;
+        }
+
+        console.warn(logPrefix, elapsed(), message, detail);
+      }
+
+      function error(message, detail) {
+        if (typeof detail === "undefined") {
+          console.error(logPrefix, elapsed(), message);
+          return;
+        }
+
+        console.error(logPrefix, elapsed(), message, detail);
+      }
+
+      function getEnvironment() {
+        var ua = navigator.userAgent || "";
+        var platform = navigator.platform || "";
+        var touchPoints = navigator.maxTouchPoints || 0;
+        var isIOS = /iPad|iPhone|iPod/.test(ua) || (platform === "MacIntel" && touchPoints > 1);
+        var isSafari = /^((?!chrome|android|crios|fxios|edgios).)*safari/i.test(ua);
+
+        return {
+          href: location.href,
+          protocol: location.protocol,
+          host: location.host,
+          pathname: location.pathname,
+          referrer: document.referrer || "",
+          userAgent: ua,
+          platform: platform,
+          maxTouchPoints: touchPoints,
+          language: navigator.language,
+          cookieEnabled: navigator.cookieEnabled,
+          online: navigator.onLine,
+          isIOS: isIOS,
+          isSafari: isSafari,
+          visibilityState: document.visibilityState
+        };
+      }
+
+      function logParsedManifest(xmlText) {
+        try {
+          var doc = new DOMParser().parseFromString(xmlText, "application/xml");
+          var parserError = doc.querySelector("parsererror");
+
+          if (parserError) {
+            error("manifest XML parse error", parserError.textContent);
+            return;
+          }
+
+          var strings = Array.prototype.slice.call(doc.querySelectorAll("string")).map(function (node) {
+            return node.textContent;
+          });
+
+          log("manifest parsed strings", strings);
+          log("manifest contains expected IPA URL", strings.indexOf(ipaUrl) !== -1);
+          log("manifest contains expected icon URL", strings.indexOf(iconUrl) !== -1);
+        } catch (err) {
+          error("manifest parse threw", err);
+        }
+      }
+
+      function probeFetch(url, options) {
+        var method = options && options.method ? options.method : "GET";
+
+        log("fetch start", { method: method, url: url });
+
+        return fetch(url, Object.assign({ cache: "no-store" }, options))
+          .then(function (response) {
+            var detail = {
+              method: method,
+              url: url,
+              ok: response.ok,
+              redirected: response.redirected,
+              status: response.status,
+              statusText: response.statusText,
+              contentType: response.headers.get("content-type"),
+              contentLength: response.headers.get("content-length"),
+              lastModified: response.headers.get("last-modified"),
+              finalUrl: response.url
+            };
+
+            log("fetch complete", detail);
+            return response;
+          })
+          .catch(function (err) {
+            error("fetch failed", {
+              method: method,
+              url: url,
+              name: err && err.name,
+              message: err && err.message
+            });
+            throw err;
+          });
+      }
+
+      function probeResources() {
+        probeFetch(manifestUrl)
+          .then(function (response) {
+            return response.text();
+          })
+          .then(function (text) {
+            log("manifest text sample", text.slice(0, 500));
+            logParsedManifest(text);
+          })
+          .catch(function () {});
+
+        probeFetch(ipaUrl, { method: "HEAD" }).catch(function () {});
+        probeFetch(iconUrl, { method: "HEAD" }).catch(function () {});
+      }
+
+      window.addEventListener("error", function (event) {
+        error("window error", {
+          message: event.message,
+          filename: event.filename,
+          lineno: event.lineno,
+          colno: event.colno,
+          error: event.error
+        });
+      });
+
+      window.addEventListener("unhandledrejection", function (event) {
+        error("unhandled promise rejection", event.reason);
+      });
+
+      window.addEventListener("online", function () {
+        log("browser went online");
+      });
+
+      window.addEventListener("offline", function () {
+        warn("browser went offline");
+      });
+
+      document.addEventListener("visibilitychange", function () {
+        log("visibility changed", document.visibilityState);
+      });
+
+      window.addEventListener("pagehide", function (event) {
+        log("pagehide", { persisted: event.persisted });
+      });
+
+      window.addEventListener("pageshow", function (event) {
+        log("pageshow", { persisted: event.persisted });
+      });
+
+      appIcon.addEventListener("load", function () {
+        log("icon image loaded", {
+          src: appIcon.currentSrc || appIcon.src,
+          naturalWidth: appIcon.naturalWidth,
+          naturalHeight: appIcon.naturalHeight
+        });
+      });
+
+      appIcon.addEventListener("error", function () {
+        error("icon image failed", appIcon.currentSrc || appIcon.src);
+      });
+
+      installButton.addEventListener("touchstart", function (event) {
+        log("install touchstart", {
+          touches: event.touches ? event.touches.length : 0,
+          targetId: event.target && event.target.id
+        });
+      }, { passive: true });
+
+      installButton.addEventListener("click", function (event) {
+        log("install click received", {
+          isTrusted: event.isTrusted,
+          button: event.button,
+          metaKey: event.metaKey,
+          ctrlKey: event.ctrlKey,
+          shiftKey: event.shiftKey,
+          altKey: event.altKey,
+          defaultPreventedBefore: event.defaultPrevented
+        });
+
+        event.preventDefault();
+
+        log("install href", installUrl);
+        log("manifest url", manifestUrl);
+        log("ipa url", ipaUrl);
+        log("icon url", iconUrl);
+        log("navigating to itms-services now");
+
+        window.location.href = installUrl;
+
+        setTimeout(function () {
+          warn("still on page 1500ms after itms-services navigation attempt", {
+            href: location.href,
+            visibilityState: document.visibilityState
+          });
+        }, 1500);
+      });
+
+      log("page script initialized", getEnvironment());
+      log("install button resolved href", installUrl);
+      probeResources();
+    })();
+  </script>
 </body>
 </html>
