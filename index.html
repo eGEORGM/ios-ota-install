@@ -65,6 +65,28 @@
       color: #6b7280;
     }
 
+    .debug-panel {
+      margin: 24px auto 0;
+      padding: 12px;
+      width: min(100%, 420px);
+      max-height: 220px;
+      overflow: auto;
+      border: 1px solid #d1d5db;
+      border-radius: 8px;
+      background: #ffffff;
+      color: #111827;
+      font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+      font-size: 11px;
+      line-height: 1.45;
+      text-align: left;
+      white-space: pre-wrap;
+      word-break: break-word;
+    }
+
+    .debug-panel:empty {
+      display: none;
+    }
+
     @media (prefers-color-scheme: dark) {
       :root {
         background: #111827;
@@ -74,6 +96,12 @@
       p,
       .hint {
         color: #cbd5e1;
+      }
+
+      .debug-panel {
+        border-color: #374151;
+        background: #020617;
+        color: #e5e7eb;
       }
     }
   </style>
@@ -92,6 +120,7 @@
       data-icon-url="https://egeorgm.github.io/ios-ota-install/assets/icon.png"
     >安装 App</a>
     <div class="hint">如果提示无法安装，请确认设备已被当前签名方式允许安装。</div>
+    <div id="debugPanel" class="debug-panel" aria-live="polite"></div>
   </main>
   <script>
     (function () {
@@ -100,17 +129,52 @@
       var logPrefix = "[ios-ota-install]";
       var installButton = document.getElementById("installButton");
       var appIcon = document.getElementById("appIcon");
+      var debugPanel = document.getElementById("debugPanel");
       var manifestUrl = installButton.dataset.manifestUrl;
       var ipaUrl = installButton.dataset.ipaUrl;
       var iconUrl = installButton.dataset.iconUrl;
-      var installUrl = installButton.href;
+      var fallbackInstallUrl = installButton.href;
+      var installUrl = "itms-services://?action=download-manifest&url=" + encodeURIComponent(manifestUrl);
       var startedAt = Date.now();
+      var panelLineLimit = 80;
+
+      installButton.href = installUrl;
 
       function elapsed() {
         return "+" + (Date.now() - startedAt) + "ms";
       }
 
+      function stringifyDetail(detail) {
+        if (typeof detail === "undefined") {
+          return "";
+        }
+
+        if (typeof detail === "string") {
+          return " " + detail;
+        }
+
+        try {
+          return " " + JSON.stringify(detail);
+        } catch (err) {
+          return " " + String(detail);
+        }
+      }
+
+      function appendPanelLine(level, message, detail) {
+        var lines = debugPanel.textContent ? debugPanel.textContent.split("\n") : [];
+        lines.push("[" + level + "] " + elapsed() + " " + message + stringifyDetail(detail));
+
+        if (lines.length > panelLineLimit) {
+          lines = lines.slice(lines.length - panelLineLimit);
+        }
+
+        debugPanel.textContent = lines.join("\n");
+        debugPanel.scrollTop = debugPanel.scrollHeight;
+      }
+
       function log(message, detail) {
+        appendPanelLine("log", message, detail);
+
         if (typeof detail === "undefined") {
           console.log(logPrefix, elapsed(), message);
           return;
@@ -120,6 +184,8 @@
       }
 
       function warn(message, detail) {
+        appendPanelLine("warn", message, detail);
+
         if (typeof detail === "undefined") {
           console.warn(logPrefix, elapsed(), message);
           return;
@@ -129,6 +195,8 @@
       }
 
       function error(message, detail) {
+        appendPanelLine("error", message, detail);
+
         if (typeof detail === "undefined") {
           console.error(logPrefix, elapsed(), message);
           return;
@@ -300,6 +368,7 @@
         event.preventDefault();
 
         log("install href", installUrl);
+        log("fallback raw href", fallbackInstallUrl);
         log("manifest url", manifestUrl);
         log("ipa url", ipaUrl);
         log("icon url", iconUrl);
