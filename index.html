@@ -25,15 +25,8 @@
       text-align: center;
     }
 
-    img {
-      width: 88px;
-      height: 88px;
-      border-radius: 20px;
-      box-shadow: 0 10px 30px rgb(15 23 42 / 18%);
-    }
-
     h1 {
-      margin: 20px 0 8px;
+      margin: 0 0 8px;
       font-size: 28px;
       line-height: 1.2;
       letter-spacing: 0;
@@ -91,28 +84,6 @@
       color: #6b7280;
     }
 
-    .debug-panel {
-      margin: 24px auto 0;
-      padding: 12px;
-      width: min(100%, 420px);
-      max-height: 220px;
-      overflow: auto;
-      border: 1px solid #d1d5db;
-      border-radius: 8px;
-      background: #ffffff;
-      color: #111827;
-      font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
-      font-size: 11px;
-      line-height: 1.45;
-      text-align: left;
-      white-space: pre-wrap;
-      word-break: break-word;
-    }
-
-    .debug-panel:empty {
-      display: none;
-    }
-
     @media (prefers-color-scheme: dark) {
       :root {
         background: #111827;
@@ -134,18 +105,11 @@
         color: #86efac;
         border-color: #166534;
       }
-
-      .debug-panel {
-        border-color: #374151;
-        background: #020617;
-        color: #e5e7eb;
-      }
     }
   </style>
 </head>
 <body>
   <main>
-    <img id="appIcon" src="./assets/icon.png" alt="AI 差旅">
     <h1>AI 差旅</h1>
     <p>请使用手机浏览器打开此页面，然后选择对应平台安装。</p>
     <div id="platformStatus" class="platform-status">正在检测设备平台...</div>
@@ -166,93 +130,19 @@
       >Android 下载</a>
     </div>
     <div class="hint">iOS 请使用 Safari；Android 下载 APK 后按系统提示安装。</div>
-    <div id="debugPanel" class="debug-panel" aria-live="polite"></div>
   </main>
   <script>
     (function () {
       "use strict";
 
-      var logPrefix = "[ios-ota-install]";
       var iosInstallButton = document.getElementById("iosInstallButton");
       var androidInstallButton = document.getElementById("androidInstallButton");
-      var appIcon = document.getElementById("appIcon");
-      var debugPanel = document.getElementById("debugPanel");
       var platformStatus = document.getElementById("platformStatus");
       var manifestUrl = iosInstallButton.dataset.manifestUrl;
-      var ipaUrl = iosInstallButton.dataset.ipaUrl;
-      var iconUrl = iosInstallButton.dataset.iconUrl;
       var apkUrl = androidInstallButton.dataset.apkUrl;
-      var fallbackInstallUrl = iosInstallButton.href;
       var installUrl = "itms-services://?action=download-manifest&url=" + encodeURIComponent(manifestUrl);
-      var startedAt = Date.now();
-      var panelLineLimit = 80;
 
       iosInstallButton.href = installUrl;
-
-      function elapsed() {
-        return "+" + (Date.now() - startedAt) + "ms";
-      }
-
-      function stringifyDetail(detail) {
-        if (typeof detail === "undefined") {
-          return "";
-        }
-
-        if (typeof detail === "string") {
-          return " " + detail;
-        }
-
-        try {
-          return " " + JSON.stringify(detail);
-        } catch (err) {
-          return " " + String(detail);
-        }
-      }
-
-      function appendPanelLine(level, message, detail) {
-        var lines = debugPanel.textContent ? debugPanel.textContent.split("\n") : [];
-        lines.push("[" + level + "] " + elapsed() + " " + message + stringifyDetail(detail));
-
-        if (lines.length > panelLineLimit) {
-          lines = lines.slice(lines.length - panelLineLimit);
-        }
-
-        debugPanel.textContent = lines.join("\n");
-        debugPanel.scrollTop = debugPanel.scrollHeight;
-      }
-
-      function log(message, detail) {
-        appendPanelLine("log", message, detail);
-
-        if (typeof detail === "undefined") {
-          console.log(logPrefix, elapsed(), message);
-          return;
-        }
-
-        console.log(logPrefix, elapsed(), message, detail);
-      }
-
-      function warn(message, detail) {
-        appendPanelLine("warn", message, detail);
-
-        if (typeof detail === "undefined") {
-          console.warn(logPrefix, elapsed(), message);
-          return;
-        }
-
-        console.warn(logPrefix, elapsed(), message, detail);
-      }
-
-      function error(message, detail) {
-        appendPanelLine("error", message, detail);
-
-        if (typeof detail === "undefined") {
-          console.error(logPrefix, elapsed(), message);
-          return;
-        }
-
-        console.error(logPrefix, elapsed(), message, detail);
-      }
 
       function getEnvironment() {
         var ua = navigator.userAgent || "";
@@ -288,7 +178,6 @@
             : "已识别为 iOS 设备，请使用 Safari 安装";
           iosInstallButton.classList.remove("secondary");
           androidInstallButton.classList.add("secondary");
-          log("platform selected", "ios");
           return;
         }
 
@@ -296,211 +185,25 @@
           platformStatus.textContent = "已识别为 Android 设备";
           androidInstallButton.classList.remove("secondary");
           iosInstallButton.classList.add("secondary");
-          log("platform selected", "android");
           return;
         }
 
         platformStatus.textContent = "未识别为手机设备，可选择对应平台测试下载";
         iosInstallButton.classList.remove("secondary");
         androidInstallButton.classList.remove("secondary");
-        log("platform selected", "unknown");
       }
-
-      function logParsedManifest(xmlText) {
-        try {
-          var doc = new DOMParser().parseFromString(xmlText, "application/xml");
-          var parserError = doc.querySelector("parsererror");
-
-          if (parserError) {
-            error("manifest XML parse error", parserError.textContent);
-            return;
-          }
-
-          var strings = Array.prototype.slice.call(doc.querySelectorAll("string")).map(function (node) {
-            return node.textContent;
-          });
-
-          log("manifest parsed strings", strings);
-          log("manifest contains expected IPA URL", strings.indexOf(ipaUrl) !== -1);
-          log("manifest contains expected icon URL", strings.indexOf(iconUrl) !== -1);
-        } catch (err) {
-          error("manifest parse threw", err);
-        }
-      }
-
-      function probeFetch(url, options) {
-        var method = options && options.method ? options.method : "GET";
-
-        log("fetch start", { method: method, url: url });
-
-        return fetch(url, Object.assign({ cache: "no-store" }, options))
-          .then(function (response) {
-            var detail = {
-              method: method,
-              url: url,
-              ok: response.ok,
-              redirected: response.redirected,
-              status: response.status,
-              statusText: response.statusText,
-              contentType: response.headers.get("content-type"),
-              contentLength: response.headers.get("content-length"),
-              lastModified: response.headers.get("last-modified"),
-              finalUrl: response.url
-            };
-
-            log("fetch complete", detail);
-            return response;
-          })
-          .catch(function (err) {
-            error("fetch failed", {
-              method: method,
-              url: url,
-              name: err && err.name,
-              message: err && err.message
-            });
-            throw err;
-          });
-      }
-
-      function probeResources() {
-        probeFetch(manifestUrl)
-          .then(function (response) {
-            return response.text();
-          })
-          .then(function (text) {
-            log("manifest text sample", text.slice(0, 500));
-            logParsedManifest(text);
-          })
-          .catch(function () {});
-
-        probeFetch(ipaUrl, { method: "HEAD" }).catch(function () {});
-        probeFetch(apkUrl, { method: "HEAD" }).catch(function () {});
-        probeFetch(iconUrl, { method: "HEAD" }).catch(function () {});
-      }
-
-      window.addEventListener("error", function (event) {
-        error("window error", {
-          message: event.message,
-          filename: event.filename,
-          lineno: event.lineno,
-          colno: event.colno,
-          error: event.error
-        });
-      });
-
-      window.addEventListener("unhandledrejection", function (event) {
-        error("unhandled promise rejection", event.reason);
-      });
-
-      window.addEventListener("online", function () {
-        log("browser went online");
-      });
-
-      window.addEventListener("offline", function () {
-        warn("browser went offline");
-      });
-
-      document.addEventListener("visibilitychange", function () {
-        log("visibility changed", document.visibilityState);
-      });
-
-      window.addEventListener("pagehide", function (event) {
-        log("pagehide", { persisted: event.persisted });
-      });
-
-      window.addEventListener("pageshow", function (event) {
-        log("pageshow", { persisted: event.persisted });
-      });
-
-      appIcon.addEventListener("load", function () {
-        log("icon image loaded", {
-          src: appIcon.currentSrc || appIcon.src,
-          naturalWidth: appIcon.naturalWidth,
-          naturalHeight: appIcon.naturalHeight
-        });
-      });
-
-      appIcon.addEventListener("error", function () {
-        error("icon image failed", appIcon.currentSrc || appIcon.src);
-      });
-
-      iosInstallButton.addEventListener("touchstart", function (event) {
-        log("ios install touchstart", {
-          touches: event.touches ? event.touches.length : 0,
-          targetId: event.target && event.target.id
-        });
-      }, { passive: true });
-
-      androidInstallButton.addEventListener("touchstart", function (event) {
-        log("android download touchstart", {
-          touches: event.touches ? event.touches.length : 0,
-          targetId: event.target && event.target.id
-        });
-      }, { passive: true });
 
       iosInstallButton.addEventListener("click", function (event) {
-        log("ios install click received", {
-          isTrusted: event.isTrusted,
-          button: event.button,
-          metaKey: event.metaKey,
-          ctrlKey: event.ctrlKey,
-          shiftKey: event.shiftKey,
-          altKey: event.altKey,
-          defaultPreventedBefore: event.defaultPrevented
-        });
-
         event.preventDefault();
-
-        log("install href", installUrl);
-        log("fallback raw href", fallbackInstallUrl);
-        log("manifest url", manifestUrl);
-        log("ipa url", ipaUrl);
-        log("icon url", iconUrl);
-        log("navigating to itms-services now");
-
         window.location.href = installUrl;
-
-        setTimeout(function () {
-          warn("still on page 1500ms after itms-services navigation attempt", {
-            href: location.href,
-            visibilityState: document.visibilityState
-          });
-        }, 1500);
       });
 
       androidInstallButton.addEventListener("click", function (event) {
-        log("android download click received", {
-          isTrusted: event.isTrusted,
-          button: event.button,
-          metaKey: event.metaKey,
-          ctrlKey: event.ctrlKey,
-          shiftKey: event.shiftKey,
-          altKey: event.altKey,
-          defaultPreventedBefore: event.defaultPrevented
-        });
-
         event.preventDefault();
-
-        log("apk url", apkUrl);
-        log("navigating to APK download now");
-
         window.location.href = apkUrl;
-
-        setTimeout(function () {
-          warn("still on page 1500ms after APK download navigation attempt", {
-            href: location.href,
-            visibilityState: document.visibilityState
-          });
-        }, 1500);
       });
 
-      var environment = getEnvironment();
-
-      log("page script initialized", environment);
-      log("ios install button resolved href", installUrl);
-      log("android install button resolved href", apkUrl);
-      applyPlatformState(environment);
-      probeResources();
+      applyPlatformState(getEnvironment());
     })();
   </script>
 </body>
