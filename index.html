@@ -78,6 +78,12 @@
       border-color: #86efac;
     }
 
+    a.install.unavailable {
+      background: #9ca3af;
+      color: #ffffff;
+      cursor: not-allowed;
+    }
+
     .hint {
       margin-top: 20px;
       font-size: 14px;
@@ -116,8 +122,9 @@
     <div class="install-actions">
       <a
         id="iosInstallButton"
-        class="install"
-        href="itms-services://?action=download-manifest&amp;url=https://egeorgm.github.io/ios-ota-install/manifest.plist"
+        class="install unavailable"
+        href="#"
+        aria-disabled="true"
         data-manifest-url="https://egeorgm.github.io/ios-ota-install/manifest.plist"
         data-ipa-url="https://egeorgm.github.io/ios-ota-install/downloads/App.ipa"
         data-icon-url="https://egeorgm.github.io/ios-ota-install/assets/icon.png"
@@ -129,7 +136,7 @@
         data-apk-url="https://egeorgm.github.io/ios-ota-install/downloads/app-debug.apk"
       >Android 下载</a>
     </div>
-    <div class="hint">iOS 请使用 Safari；Android 下载 APK 后按系统提示安装。</div>
+    <div class="hint">iOS 应用上架中，敬请期待；Android 下载 APK 后按系统提示安装。</div>
   </main>
   <script>
     (function () {
@@ -138,11 +145,8 @@
       var iosInstallButton = document.getElementById("iosInstallButton");
       var androidInstallButton = document.getElementById("androidInstallButton");
       var platformStatus = document.getElementById("platformStatus");
-      var manifestUrl = iosInstallButton.dataset.manifestUrl;
       var apkUrl = androidInstallButton.dataset.apkUrl;
-      var installUrl = "itms-services://?action=download-manifest&url=" + encodeURIComponent(manifestUrl);
-
-      iosInstallButton.href = installUrl;
+      var iosUnavailableMessage = "应用上架中，敬请期待";
 
       function getEnvironment() {
         var ua = navigator.userAgent || "";
@@ -173,9 +177,7 @@
 
       function applyPlatformState(environment) {
         if (environment.isIOS) {
-          platformStatus.textContent = environment.isSafari
-            ? "已识别为 iOS 设备"
-            : "已识别为 iOS 设备，请使用 Safari 安装";
+          platformStatus.textContent = "iOS " + iosUnavailableMessage;
           iosInstallButton.classList.remove("secondary");
           androidInstallButton.classList.add("secondary");
           return;
@@ -188,14 +190,14 @@
           return;
         }
 
-        platformStatus.textContent = "未识别为手机设备，可选择对应平台测试下载";
+        platformStatus.textContent = "未识别为手机设备，iOS 应用上架中，可选择 Android 测试下载";
         iosInstallButton.classList.remove("secondary");
         androidInstallButton.classList.remove("secondary");
       }
 
       iosInstallButton.addEventListener("click", function (event) {
         event.preventDefault();
-        window.location.href = installUrl;
+        alert(iosUnavailableMessage);
       });
 
       androidInstallButton.addEventListener("click", function (event) {
